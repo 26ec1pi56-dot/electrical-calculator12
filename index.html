@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Electrical Parameter Calculator</title>
+<meta name="description" content="Calculate voltage, current, resistance and power with Ohm’s law and see the circuit respond live.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#0f3560; --paper2:#143f6f; --ink:#e6f0ff; --faint:#8fb0da; --line:#3d6aa3;
+  --amber:#ffc857; --cyan:#7fdcff; --bad:#ff8f8f; --good:#8be3b0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; color:var(--ink); background:var(--paper);
+  background-image:
+    linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px),
+    linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:96px 96px,96px 96px,24px 24px,24px 24px;
+  font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.copyright { color: var(--amber); font-weight: 600; }
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 56px}
+header{margin-bottom:26px}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:13px;color:var(--faint);background:rgba(15,53,96,.7)}
+h1{font:700 clamp(30px,5.2vw,54px)/1.08 Georgia,"Iowan Old Style","Times New Roman",serif;margin:14px 0 10px;letter-spacing:-.01em}
+.lede{max-width:60ch;color:var(--faint);margin:0;font-size:17px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:22px;align-items:start}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.panel{background:rgba(10,38,70,.82);border:1px solid var(--line);border-radius:6px;padding:20px;backdrop-filter:blur(2px)}
+h2{font:600 15px/1.3 system-ui,sans-serif;margin:0 0 12px;color:var(--faint);letter-spacing:.01em}
+.tabs,.sub{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tabs button,.sub button,.chip{
+  font:inherit;font-size:15px;color:var(--ink);background:transparent;border:1px solid var(--line);
+  border-radius:4px;padding:8px 14px;cursor:pointer;min-height:40px;transition:background .15s,border-color .15s}
+.tabs button:hover,.sub button:hover,.chip:hover{border-color:var(--cyan)}
+.tabs button[aria-selected=true]{background:var(--amber);color:#1b2a40;border-color:var(--amber);font-weight:600}
+.sub button[aria-pressed=true]{background:var(--cyan);color:#10304f;border-color:var(--cyan);font-weight:600}
+.sub[hidden]{display:none}
+.formula{font:600 26px/1.2 Georgia,serif;margin:6px 0 16px;color:var(--amber)}
+.field{margin-bottom:14px}
+label{display:block;font-size:14px;color:var(--faint);margin-bottom:5px}
+.row{display:flex;gap:8px}
+input,select{font:inherit;color:var(--ink);background:#0a2646;border:1px solid var(--line);border-radius:4px;padding:10px 12px;min-height:44px}
+input{flex:1;min-width:0;font-variant-numeric:tabular-nums}
+select{width:92px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.actions{display:flex;gap:10px;margin-top:6px}
+.go{flex:1;font:600 16px system-ui;background:var(--amber);color:#1b2a40;border:0;border-radius:4px;padding:12px 16px;min-height:46px;cursor:pointer}
+.go:hover{filter:brightness(1.08)}
+.reset{font:inherit;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:12px 16px;cursor:pointer}
+.err{margin-top:12px;border-left:3px solid var(--bad);padding:8px 12px;background:rgba(255,143,143,.1);color:#ffd0d0;border-radius:0 4px 4px 0}
+.err[hidden]{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font-size:14px;padding:6px 11px;min-height:34px;color:var(--faint)}
+.result .label{color:var(--faint);font-size:14px}
+.result .big{font:700 clamp(38px,7vw,64px)/1.05 Georgia,serif;color:var(--amber);font-variant-numeric:tabular-nums;word-break:break-word}
+.result .big.pop{animation:pop .35s ease-out}
+@keyframes pop{from{opacity:.2;transform:translateY(6px)}to{opacity:1;transform:none}}
+.steps{margin:6px 0 0;color:var(--cyan);font-size:16px;font-variant-numeric:tabular-nums;word-break:break-word}
+svg{display:block;width:100%;height:auto}
+.wire{fill:none;stroke:var(--ink);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.flow{fill:none;stroke:var(--amber);stroke-width:3;stroke-linecap:round;stroke-dasharray:3 13;animation:dash var(--dur,2s) linear infinite}
+@keyframes dash{to{stroke-dashoffset:-16}}
+.flow.off{animation-play-state:paused;opacity:.25}
+svg text{fill:var(--ink);font:600 15px system-ui,sans-serif}
+svg .sm{fill:var(--faint);font-weight:400;font-size:13px}
+.meters{display:grid;gap:10px;margin-top:6px}
+.m{display:grid;grid-template-columns:96px 1fr 104px;gap:10px;align-items:center;font-size:14px}
+.track{height:10px;background:#0a2646;border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--cyan);transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.m span:last-child{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.hint{font-size:13px;color:var(--faint);margin:8px 0 0}
+.hist{list-style:none;margin:0;padding:0;font-size:14px;font-variant-numeric:tabular-nums}
+.hist li{padding:7px 0;border-bottom:1px solid rgba(61,106,163,.5);display:flex;justify-content:space-between;gap:10px}
+.hist li span:first-child{color:var(--faint)}
+.empty{color:var(--faint);font-size:14px}
+.linkbtn{background:none;border:0;color:var(--cyan);cursor:pointer;font:inherit;font-size:13px;padding:0}
+footer{margin-top:30px;color:var(--faint);font-size:14px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+.stack{display:grid;gap:22px}
+@media(prefers-reduced-motion:reduce){.flow{animation:none}.fill{transition:none}.big.pop{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="badge">MITS Gwalior, Centre for Internet of Things</span>
+  <h1>Electrical Parameter Calculator</h1>
+  <p class="lede">Pick what you want to find, enter the two values you know, and watch the circuit respond. Covers Ohm’s law and the power equations.</p>
+</header>
+
+<div class="grid">
+  <section class="panel" aria-labelledby="h-calc">
+    <h2 id="h-calc">Calculator</h2>
+    <div class="tabs" role="tablist" aria-label="Quantity to find">
+      <button role="tab" data-t="V" aria-selected="true">Voltage</button>
+      <button role="tab" data-t="I" aria-selected="false">Current</button>
+      <button role="tab" data-t="R" aria-selected="false">Resistance</button>
+      <button role="tab" data-t="P" aria-selected="false">Power</button>
+    </div>
+    <div class="sub" id="sub" hidden aria-label="Power formula">
+      <button data-m="PVI" aria-pressed="true">From V and I</button>
+      <button data-m="PIR" aria-pressed="false">From I and R</button>
+      <button data-m="PVR" aria-pressed="false">From V and R</button>
+    </div>
+    <div class="formula" id="formula">V = I × R</div>
+    <form id="form" novalidate>
+      <div id="fields"></div>
+      <div class="actions">
+        <button class="go" type="submit">Calculate</button>
+        <button class="reset" type="button" id="reset">Clear</button>
+      </div>
+    </form>
+    <div class="err" id="err" role="alert" hidden></div>
+    <h2 style="margin-top:20px">Try an example</h2>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <div class="stack">
+    <section class="panel result" aria-live="polite" aria-labelledby="h-res">
+      <h2 id="h-res">Result</h2>
+      <div class="label" id="rlabel">Enter two values and select Calculate.</div>
+      <div class="big" id="rbig">—</div>
+      <div class="steps" id="steps"></div>
+      <svg viewBox="0 0 400 220" role="img" aria-label="Live circuit with a battery and a resistor" style="margin-top:14px">
+        <path class="wire" d="M70 80V50H130 M270 50H340V180H70V92"/>
+        <path class="wire" d="M130 50l10-16 20 32 20-32 20 32 20-32 20 32 20-32 10 16"/>
+        <path class="wire" d="M48 80H92 M58 92H82" style="stroke-width:5"/>
+        <path id="flow" class="flow off" d="M70 92V180H340V50H270 M130 50H70V80"/>
+        <text x="14" y="108" id="tV">V</text>
+        <text x="180" y="20" id="tR">R</text>
+        <text x="350" y="120" id="tI">I</text>
+        <text x="180" y="206" class="sm">current direction: battery to resistor</text>
+      </svg>
+      <div class="meters" id="meters"></div>
+      <p class="hint">Bars use a log scale from 1 pico to 1 tera, so tiny and huge values both show.</p>
+    </section>
+    <section class="panel" aria-labelledby="h-his">
+      <h2 id="h-his" style="display:flex;justify-content:space-between">Recent calculations <button class="linkbtn" id="clr" type="button">Clear list</button></h2>
+      <ul class="hist" id="hist"></ul>
+      <div class="empty" id="hempty">Your calculations will appear here.</div>
+    </section>
+  </div>
+</div>
+
+<footer>
+  <span class="copyright">@ Piyush Patidar. All rights reserved.</span>
+  <span>Madhav Institute of Technology and Science, Gwalior</span>
+</footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const NAME = {V:['Voltage','V'], I:['Current','A'], R:['Resistance','Ω'], P:['Power','W']};
+const MODES = {
+  V:  {out:'V', f:'V = I × R',  in:['I','R'], fn:x=>x.I*x.R,       st:x=>`${n(x.I,'I')} × ${n(x.R,'R')}`},
+  I:  {out:'I', f:'I = V ÷ R',  in:['V','R'], fn:x=>x.V/x.R,       st:x=>`${n(x.V,'V')} ÷ ${n(x.R,'R')}`},
+  R:  {out:'R', f:'R = V ÷ I',  in:['V','I'], fn:x=>x.V/x.I,       st:x=>`${n(x.V,'V')} ÷ ${n(x.I,'I')}`},
+  PVI:{out:'P', f:'P = V × I',  in:['V','I'], fn:x=>x.V*x.I,       st:x=>`${n(x.V,'V')} × ${n(x.I,'I')}`},
+  PIR:{out:'P', f:'P = I² × R', in:['I','R'], fn:x=>x.I*x.I*x.R,   st:x=>`(${n(x.I,'I')})² × ${n(x.R,'R')}`},
+  PVR:{out:'P', f:'P = V² ÷ R', in:['V','R'], fn:x=>x.V*x.V/x.R,   st:x=>`(${n(x.V,'V')})² ÷ ${n(x.R,'R')}`}
+};
+const PREFIX = ['p','n','µ','m','','k','M','G'];
+const UNIT_OPTS = [['µ',1e-6],['m',1e-3],['',1],['k',1e3],['M',1e6],['G',1e9]];
+let mode = 'V', hist = [];
+
+function fmt(v, u){
+  if (v === 0) return '0 ' + u;
+  const a = Math.abs(v);
+  if (a < 1e-12 || a >= 1e15) return v.toExponential(3) + ' ' + u;
+  let i = Math.floor(Math.log10(a) / 3);
+  i = Math.max(-4, Math.min(4, i));
+  return (+(v / Math.pow(10, i * 3)).toPrecision(5)) + ' ' + PREFIX[i + 4] + u;
+}
+function n(v, k){ return fmt(v, NAME[k][1]); }
+
+function setMode(m){
+  mode = m;
+  const t = m[0] === 'P' ? 'P' : m;
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t));
+  $('#sub').hidden = t !== 'P';
+  document.querySelectorAll('.sub button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === m));
+  $('#formula').textContent = MODES[m].f;
+  $('#fields').innerHTML = MODES[m].in.map(k => `
+    <div class="field">
+      <label for="in_${k}">${NAME[k][0]} (${NAME[k][1]})</label>
+      <div class="row">
+        <input id="in_${k}" inputmode="decimal" autocomplete="off" placeholder="e.g. 12 or 1e3">
+        <select id="u_${k}" aria-label="${NAME[k][0]} unit prefix">
+          ${UNIT_OPTS.map(o => `<option value="${o[1]}"${o[1]===1?' selected':''}>${o[0]}${NAME[k][1]}</option>`).join('')}
+        </select>
+      </div>
+    </div>`).join('');
+  showErr('');
+}
+
+function showErr(msg){ const e = $('#err'); e.textContent = msg; e.hidden = !msg; }
+
+function readField(k){
+  const raw = $('#in_' + k).value.trim(), nm = NAME[k][0];
+  if (raw === '') throw `Please enter a value for ${nm}.`;
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(raw)) throw `Invalid input for ${nm}. Please enter a numeric value, for example 12 or 1e3.`;
+  const v = Number(raw) * Number($('#u_' + k).value);
+  if (!isFinite(v)) throw `${nm} is too large to process. Please enter a smaller value.`;
+  if (v < 0) throw `${nm} cannot be negative. Please enter a value of zero or more.`;
+  return v;
+}
+
+function derive(k){
+  let {V, I, R, P} = k;
+  if (V == null && I != null && R != null) V = I * R;
+  if (I == null && V != null && R != null && R > 0) I = V / R;
+  if (R == null && V != null && I != null && I > 0) R = V / I;
+  if (P == null){
+    if (V != null && I != null) P = V * I;
+    else if (I != null && R != null) P = I * I * R;
+    else if (V != null && R != null && R > 0) P = V * V / R;
+  }
+  return {V, I, R, P};
+}
+
+function calculate(){
+  const m = MODES[mode], x = {};
+  try{
+    m.in.forEach(k => x[k] = readField(k));
+    if ((mode === 'I' || mode === 'PVR') && x.R === 0) throw 'Resistance cannot be zero. Please enter a value greater than 0.';
+    if (mode === 'R' && x.I === 0) throw 'Current cannot be zero when finding resistance. Please enter a value greater than 0.';
+    const res = m.fn(x);
+    if (!isFinite(res)) throw 'The result is too large to display. Please use smaller values.';
+    showErr('');
+    const out = m.out, nm = NAME[out];
+    $('#rlabel').textContent = nm[0] + ' (' + m.f + ')';
+    const big = $('#rbig');
+    big.textContent = fmt(res, nm[1]);
+    big.classList.remove('pop'); void big.offsetWidth; big.classList.add('pop');
+    $('#steps').textContent = `${out} = ${m.st(x)} = ${fmt(res, nm[1])}`;
+    const known = Object.assign({}, x); known[out] = res;
+    draw(derive(known));
+    hist.unshift([m.f, fmt(res, nm[1])]); hist = hist.slice(0, 8); drawHist();
+  }catch(e){
+    if (typeof e !== 'string') throw e;
+    showErr(e);
+  }
+}
+
+function pct(v){ return v > 0 ? Math.max(0, Math.min(1, (Math.log10(v) + 12) / 24)) : 0; }
+
+function draw(d){
+  $('#tV').textContent = d.V != null ? fmt(d.V, 'V') : 'V';
+  $('#tR').textContent = d.R != null ? fmt(d.R, 'Ω') : 'R undefined';
+  $('#tI').textContent = d.I != null ? fmt(d.I, 'A') : 'I';
+  const f = $('#flow'), on = d.I > 0;
+  f.classList.toggle('off', !on);
+  if (on) f.style.setProperty('--dur', (4.5 - 4 * pct(d.I)).toFixed(2) + 's');
+  $('#meters').innerHTML = ['V','I','R','P'].map(k => `
+    <div class="m"><span>${NAME[k][0]}</span>
+    <div class="track"><div class="fill" style="width:${(pct(d[k]) * 100).toFixed(1)}%"></div></div>
+    <span>${d[k] != null ? fmt(d[k], NAME[k][1]) : '—'}</span></div>`).join('');
+}
+
+function drawHist(){
+  $('#hist').innerHTML = hist.map(h => `<li><span>${h[0]}</span><span>${h[1]}</span></li>`).join('');
+  $('#hempty').hidden = hist.length > 0;
+}
+
+const EXAMPLES = [
+  ['Zero current',      'V',   {I:'0',  R:'50'}],
+  ['Very large resistance','I',{V:'5',  R:'1e9'}],
+  ['LED resistor',      'R',   {V:'9',  I:'0.02'}],
+  ['Mains power',       'PVI', {V:'230',I:'2'}],
+  ['Zero resistance (error)','I',{V:'12', R:'0'}]
+];
+$('#chips').innerHTML = EXAMPLES.map((e, i) => `<button class="chip" type="button" data-i="${i}">${e[0]}</button>`).join('');
+$('#chips').addEventListener('click', ev => {
+  const b = ev.target.closest('.chip'); if (!b) return;
+  const [, m, vals] = EXAMPLES[b.dataset.i];
+  setMode(m);
+  for (const k in vals) $('#in_' + k).value = vals[k];
+  calculate();
+});
+
+document.querySelector('.tabs').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  setMode(b.dataset.t === 'P' ? 'PVI' : b.dataset.t);
+});
+$('#sub').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) setMode(b.dataset.m); });
+$('#form').addEventListener('submit', ev => { ev.preventDefault(); calculate(); });
+$('#reset').addEventListener('click', () => {
+  setMode(mode);
+  $('#rlabel').textContent = 'Enter two values and select Calculate.';
+  $('#rbig').textContent = '—'; $('#steps').textContent = '';
+  $('#flow').classList.add('off'); $('#meters').innerHTML = '';
+  $('#tV').textContent = 'V'; $('#tR').textContent = 'R'; $('#tI').textContent = 'I';
+});
+$('#clr').addEventListener('click', () => { hist = []; drawHist(); });
+
+setMode('V'); drawHist();
+draw({V:null, I:null, R:null, P:null});
+</script>
+</body>
+</html>
